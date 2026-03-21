@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "scripts": {
+    "redteam": "npx promptfoo@latest redteam run",
+    "redteam:generate": "npx promptfoo@latest redteam generate",
+    "redteam:report": "npx promptfoo@latest redteam report"
+  }
+}
