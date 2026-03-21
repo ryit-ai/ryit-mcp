@@ -45,6 +45,7 @@ logger.setLevel(logging.INFO)
 
 # --- Rate Limiter ---
 
+
 class RateLimiter:
     def __init__(self, max_calls: int, window: int):
         self.max_calls = max_calls
@@ -59,9 +60,11 @@ class RateLimiter:
         self.calls.append(now)
         return True
 
+
 _rate_limiter = RateLimiter(RATE_LIMIT_CALLS, RATE_LIMIT_WINDOW)
 
 # --- HTTP Client ---
+
 
 def _get_headers() -> dict:
     """Build auth headers. Token never exposed to model context."""
@@ -73,10 +76,15 @@ def _get_headers() -> dict:
         "User-Agent": "ryit-mcp/0.2.0",
     }
 
-def _api_request(method: str, path: str, body: Optional[dict] = None, timeout: float = 30.0) -> dict:
+
+def _api_request(
+    method: str, path: str, body: Optional[dict] = None, timeout: float = 30.0
+) -> dict:
     """Make an authenticated API request to ryit.ai editor."""
     if not _rate_limiter.check():
-        return {"error": "Rate limit exceeded. Please wait before making more requests."}
+        return {
+            "error": "Rate limit exceeded. Please wait before making more requests."
+        }
 
     url = f"{RYIT_API_URL}{path}"
     try:
@@ -104,7 +112,9 @@ def _api_request(method: str, path: str, body: Optional[dict] = None, timeout: f
     except Exception:
         return {"error": "An unexpected error occurred."}
 
+
 # --- Input Validation ---
+
 
 def _validate_slug(slug: str) -> str:
     """Validate and sanitize a URL slug."""
@@ -117,6 +127,7 @@ def _validate_slug(slug: str) -> str:
         raise ValueError("Slug too long (max 255)")
     return slug
 
+
 def _validate_title(title: str) -> str:
     """Validate a title string."""
     title = title.strip()
@@ -128,11 +139,13 @@ def _validate_title(title: str) -> str:
     title = re.sub(r"[<>{}]", "", title)
     return title
 
+
 def _truncate_output(text: str) -> str:
     """Ensure output to model doesn't exceed size limit."""
     if len(text) > MAX_OUTPUT_LENGTH:
         return text[:MAX_OUTPUT_LENGTH] + "\n... (output truncated)"
     return text
+
 
 # --- MCP Server ---
 
@@ -146,6 +159,7 @@ mcp = FastMCP(
         "Only call delete_space after getting explicit user confirmation."
     ),
 )
+
 
 @mcp.tool()
 def scan_docs(directory: str) -> str:
@@ -166,8 +180,18 @@ def scan_docs(directory: str) -> str:
         return "Error: Path is not a directory."
 
     skip_dirs = {
-        ".git", ".svn", "node_modules", "vendor", "venv", ".venv",
-        "__pycache__", "dist", "build", ".next", ".nuxt", "target",
+        ".git",
+        ".svn",
+        "node_modules",
+        "vendor",
+        "venv",
+        ".venv",
+        "__pycache__",
+        "dist",
+        "build",
+        ".next",
+        ".nuxt",
+        "target",
     }
 
     md_files = []
@@ -186,11 +210,13 @@ def scan_docs(directory: str) -> str:
         except Exception:
             title = md_path.stem
 
-        md_files.append({
-            "path": str(rel),
-            "title": str(title)[:255],
-            "size": md_path.stat().st_size,
-        })
+        md_files.append(
+            {
+                "path": str(rel),
+                "title": str(title)[:255],
+                "size": md_path.stat().st_size,
+            }
+        )
 
     if not md_files:
         return "No markdown files found in the specified directory."
@@ -240,8 +266,18 @@ def sync_docs(
 
     # Collect markdown files
     skip_dirs = {
-        ".git", ".svn", "node_modules", "vendor", "venv", ".venv",
-        "__pycache__", "dist", "build", ".next", ".nuxt", "target",
+        ".git",
+        ".svn",
+        "node_modules",
+        "vendor",
+        "venv",
+        ".venv",
+        "__pycache__",
+        "dist",
+        "build",
+        ".next",
+        ".nuxt",
+        "target",
     }
 
     md_files = []
@@ -259,11 +295,15 @@ def sync_docs(
         return "No markdown files found."
 
     # Create space via API
-    result = _api_request("POST", "/api/v1/spaces", {
-        "title": title,
-        "slug": slug,
-        "description": description,
-    })
+    result = _api_request(
+        "POST",
+        "/api/v1/spaces",
+        {
+            "title": title,
+            "slug": slug,
+            "description": description,
+        },
+    )
 
     if "error" in result:
         return f"Failed to create space: {result['error']}"
@@ -287,13 +327,17 @@ def sync_docs(
         page_slug = _validate_slug(str(rel.with_suffix("")))
         content_json = _markdown_to_tiptap(body)
 
-        page_result = _api_request("POST", f"/api/v1/spaces/{space_id}/pages", {
-            "title": page_title,
-            "slug": page_slug,
-            "content_json": json.loads(content_json),
-            "content_markdown": body,
-            "order": order,
-        })
+        page_result = _api_request(
+            "POST",
+            f"/api/v1/spaces/{space_id}/pages",
+            {
+                "title": page_title,
+                "slug": page_slug,
+                "content_json": json.loads(content_json),
+                "content_markdown": body,
+                "order": order,
+            },
+        )
 
         if "error" in page_result:
             errors.append(f"  - {rel}: {page_result['error']}")
@@ -414,6 +458,7 @@ def delete_space(space_id: str) -> str:
 
 # --- Markdown to Tiptap JSON converter ---
 
+
 def _markdown_to_tiptap(markdown: str) -> str:
     """Convert markdown to a simple Tiptap JSON document."""
     content = []
@@ -428,11 +473,13 @@ def _markdown_to_tiptap(markdown: str) -> str:
         if heading_match:
             level = len(heading_match.group(1))
             text = heading_match.group(2).strip()[:500]
-            content.append({
-                "type": "heading",
-                "attrs": {"level": level},
-                "content": [{"type": "text", "text": text}],
-            })
+            content.append(
+                {
+                    "type": "heading",
+                    "attrs": {"level": level},
+                    "content": [{"type": "text", "text": text}],
+                }
+            )
             i += 1
             continue
 
@@ -458,10 +505,12 @@ def _markdown_to_tiptap(markdown: str) -> str:
             continue
 
         # Paragraphs
-        content.append({
-            "type": "paragraph",
-            "content": [{"type": "text", "text": line}],
-        })
+        content.append(
+            {
+                "type": "paragraph",
+                "content": [{"type": "text", "text": line}],
+            }
+        )
         i += 1
 
     if not content:
