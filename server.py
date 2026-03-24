@@ -29,8 +29,8 @@ from fastmcp import FastMCP
 # --- Configuration ---
 
 RYIT_API_URL = os.environ.get("RYIT_API_URL", "https://editor.ryit.ai")
-# Token is read from env, NEVER passed as a tool parameter or exposed to model
-_GITHUB_TOKEN = os.environ.get("RYIT_GITHUB_TOKEN", "")
+# API key read from env, NEVER passed as a tool parameter or exposed to model
+_API_KEY = os.environ.get("RYIT_API_KEY", "")
 
 MAX_FILE_SIZE = 1_000_000  # 1MB per file
 MAX_FILES_PER_SYNC = 100
@@ -67,13 +67,22 @@ _rate_limiter = RateLimiter(RATE_LIMIT_CALLS, RATE_LIMIT_WINDOW)
 
 
 def _get_headers() -> dict:
-    """Build auth headers. Token never exposed to model context."""
-    if not _GITHUB_TOKEN:
-        raise ValueError("RYIT_GITHUB_TOKEN environment variable is required")
+    """Build auth headers. API key never exposed to model context."""
+    if not _API_KEY:
+        raise ValueError(
+            "RYIT_API_KEY is not set. Generate one at https://editor.ryit.ai/settings "
+            "then run: claude mcp remove ryit && claude mcp add "
+            "-e RYIT_API_KEY=ryit_sk_xxx -s user ryit -- python server.py"
+        )
+    if not _API_KEY.startswith("ryit_sk_"):
+        raise ValueError(
+            "Invalid API key format. Keys start with 'ryit_sk_'. "
+            "Generate one at https://editor.ryit.ai/settings"
+        )
     return {
-        "Authorization": f"Bearer {_GITHUB_TOKEN}",
+        "Authorization": f"Bearer {_API_KEY}",
         "Content-Type": "application/json",
-        "User-Agent": "ryit-mcp/0.2.0",
+        "User-Agent": "ryit-mcp/0.3.0",
     }
 
 
@@ -97,7 +106,10 @@ def _api_request(
             )
 
             if response.status_code == 401:
-                return {"error": "Authentication failed. Check your GitHub token."}
+                return {
+                    "error": "Authentication failed. Your API key may be invalid or revoked. "
+                    "Generate a new one at https://editor.ryit.ai/settings"
+                }
             if response.status_code == 404:
                 return {"error": "Resource not found."}
             if response.status_code >= 400:
