@@ -181,6 +181,8 @@ def scan_docs(directory: str) -> str:
     Args:
         directory: Absolute path to the project directory to scan
     """
+    logger.info("scan_docs: scanning directory")
+
     try:
         path = Path(directory).expanduser().resolve()
     except Exception:
@@ -240,6 +242,7 @@ def scan_docs(directory: str) -> str:
         "\nUse sync_docs to create a space from these files. "
         "The space will be created as a DRAFT (not published)."
     )
+    logger.info("scan_docs: completed, found %d file(s)", len(md_files))
     return _truncate_output("\n".join(lines))
 
 
@@ -265,6 +268,8 @@ def sync_docs(
         slug = _validate_slug(space_slug) if space_slug else _validate_slug(space_title)
     except ValueError as e:
         return f"Validation error: {e}"
+
+    logger.info("sync_docs: creating space '%s'", title)
 
     try:
         path = Path(directory).expanduser().resolve()
@@ -368,6 +373,7 @@ def sync_docs(
         "\nIMPORTANT: This space is NOT published yet. "
         "Ask the user for confirmation before calling publish_space."
     )
+    logger.info("sync_docs: completed, created %d page(s)", page_count)
     return _truncate_output("\n".join(output))
 
 
@@ -376,6 +382,7 @@ def list_spaces() -> str:
     """List all documentation spaces on ryit.ai for the authenticated user.
     This is a read-only operation.
     """
+    logger.info("list_spaces: listing spaces")
     result = _api_request("GET", "/api/v1/spaces")
     if "error" in result:
         return f"Error: {result['error']}"
@@ -388,6 +395,7 @@ def list_spaces() -> str:
     for s in spaces:
         status = "PUBLISHED" if s.get("isPublished") else "DRAFT"
         lines.append(f"  [{status}] {s['title']} (slug: {s['slug']}, id: {s['id']})")
+    logger.info("list_spaces: completed, found %d space(s)", len(spaces))
     return _truncate_output("\n".join(lines))
 
 
@@ -401,6 +409,7 @@ def get_space_pages(space_id: str) -> str:
     if not re.match(r"^[0-9a-f-]{36}$", space_id):
         return "Error: Invalid space ID format."
 
+    logger.info("get_space_pages: listing pages for %s", space_id)
     result = _api_request("GET", f"/api/v1/spaces/{space_id}/pages")
     if "error" in result:
         return f"Error: {result['error']}"
@@ -412,6 +421,7 @@ def get_space_pages(space_id: str) -> str:
     lines = [f"Found {len(pages)} page(s):\n"]
     for p in pages:
         lines.append(f"  {p.get('order', 0)}. {p['title']} (slug: {p['slug']})")
+    logger.info("get_space_pages: completed for %s", space_id)
     return _truncate_output("\n".join(lines))
 
 
@@ -426,10 +436,12 @@ def publish_space(space_id: str) -> str:
     if not re.match(r"^[0-9a-f-]{36}$", space_id):
         return "Error: Invalid space ID format."
 
+    logger.info("publish_space: publishing %s", space_id)
     result = _api_request("POST", f"/api/v1/spaces/{space_id}/publish")
     if "error" in result:
         return f"Error: {result['error']}"
 
+    logger.info("publish_space: completed for %s", space_id)
     return f"Space {space_id} is now PUBLISHED and publicly visible."
 
 
@@ -443,10 +455,12 @@ def unpublish_space(space_id: str) -> str:
     if not re.match(r"^[0-9a-f-]{36}$", space_id):
         return "Error: Invalid space ID format."
 
+    logger.info("unpublish_space: unpublishing %s", space_id)
     result = _api_request("DELETE", f"/api/v1/spaces/{space_id}/publish")
     if "error" in result:
         return f"Error: {result['error']}"
 
+    logger.info("unpublish_space: completed for %s", space_id)
     return f"Space {space_id} is now UNPUBLISHED."
 
 
@@ -461,10 +475,12 @@ def delete_space(space_id: str) -> str:
     if not re.match(r"^[0-9a-f-]{36}$", space_id):
         return "Error: Invalid space ID format."
 
+    logger.info("delete_space: deleting %s", space_id)
     result = _api_request("DELETE", f"/api/v1/spaces/{space_id}")
     if "error" in result:
         return f"Error: {result['error']}"
 
+    logger.info("delete_space: completed for %s", space_id)
     return f"Space {space_id} has been permanently deleted."
 
 
